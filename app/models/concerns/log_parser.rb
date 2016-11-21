@@ -76,8 +76,10 @@ module LogParser
       else
         entry = buffer[last_pid]
 
-        entry.content += line
-        entry.exception += line unless entry.exception.nil?
+        if entry.present?
+          entry.content += line
+          entry.exception += line unless entry.exception.nil?
+        end
       end
     end
 
