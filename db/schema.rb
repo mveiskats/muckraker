@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20161120121055) do
+ActiveRecord::Schema.define(version: 20161121123144) do
 
   create_table "log_entries", force: :cascade, options: "ENGINE=InnoDB DEFAULT CHARSET=utf8" do |t|
     t.datetime "logged_at"
@@ -33,6 +33,7 @@ ActiveRecord::Schema.define(version: 20161120121055) do
     t.text     "exception",         limit: 16777215
     t.datetime "created_at",                         null: false
     t.datetime "updated_at",                         null: false
+    t.integer  "user_id"
     t.index ["logged_at"], name: "index_log_entries_on_logged_at", using: :btree
   end
 

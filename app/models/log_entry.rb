@@ -1,4 +1,4 @@
-class LogEntry < ActiveRecord::Base
+class LogEntry < ApplicationRecord
   default_scope { order(:logged_at) }
   scope :created_after, ->(date) { where('DATE(logged_at) >= ?', date) }
   scope :created_before, ->(date) { where('DATE(logged_at) <= ?', date) }

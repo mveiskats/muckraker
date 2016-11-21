@@ -1,6 +1,8 @@
 module LogParser
   # Assigns named matches of MatchData to attributes of record
   def self.merge_match_into_record(match_data, record)
+    return if record.nil?
+
     match_data.names.each do |match_name|
       record[match_name] = match_data[match_name]
     end
@@ -19,6 +21,7 @@ module LogParser
     processing_rx = /^Processing by (?<controller>.+)#(?<action>.+) as (?<format>.+)/
     parameters_rx = /^  Parameters: (?<parameters>\{.+\})/
     completed_rx = /^Completed (?<status_code>\d+) \w+ in (?<response_time>\d+)ms \(Views: (?<view_time>.+)ms \| ActiveRecord: (?<activerecord_time>.+)ms\)/
+    user_rx = /^User id: (?<user_id>\d+)/
 
     # Accumulate input through separate buffers for each pid,
     # because log messages from different processes can intermix
@@ -57,6 +60,8 @@ module LogParser
         elsif match = parameters_rx.match(line_data)
           merge_match_into_record(match, entry)
         elsif match = completed_rx.match(line_data)
+          merge_match_into_record(match, entry)
+        elsif match = user_rx.match(line_data)
           merge_match_into_record(match, entry)
         end
 
