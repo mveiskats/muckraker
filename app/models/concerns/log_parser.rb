@@ -1,7 +1,7 @@
 module LogParser
   # Do database writes in batches for speed
   class WriteBuffer
-    FLUSH_THRESHOLD = 1000
+    FLUSH_THRESHOLD = 100
 
     def initialize
       @bulk_entries = []
@@ -62,6 +62,7 @@ module LogParser
 
     # TODO: Figure out a decent way to fit this into 80 char column width
     line_rx = /^(\w), \[(.+) #(\d+)\] .+ -- : (.*)$/
+
     started_rx = /^Started (?<method>\w+) "(?<uri>.+)" for (?<ip>.+) at/
     processing_rx = /^Processing by (?<controller>.+)#(?<action>.+) as (?<format>.+)/
     parameters_rx = /^  Parameters: (?<parameters>\{.+\})/
@@ -71,12 +72,10 @@ module LogParser
     demux = Demultiplexer.new
 
     # Keep track of last known pid,
-    # because some messages (exceptions) span multiple lines
+    # because some messages span multiple lines
     # with prefix only on the first one
     last_pid = nil
 
-    # Following code will rely on the fact that regexps matched with =~
-    # assign their named captures to local variables
     File.open(file_name).each do |line|
       if match = line_rx.match(line)
         log_level, logged_at, pid, line_data = match.captures
