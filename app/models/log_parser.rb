@@ -1,65 +1,17 @@
 module LogParser
-  # Do database writes in batches for speed
-  class WriteBuffer
-    FLUSH_THRESHOLD = 100
+  def self.without_logs
+    # Turning off debug logging can shave off about 25% of import time
+    old_log_level = Rails.logger.level
+    Rails.logger.level = 1 if Rails.logger.level.zero?
 
-    def initialize
-      @bulk_entries = []
-    end
-
-    def <<(entry)
-      @bulk_entries << entry
-      flush if @bulk_entries.length >= FLUSH_THRESHOLD
-    end
-
-    def flush
-      LogEntry.import @bulk_entries
-      @bulk_entries = []
-    end
+    yield
+  ensure
+    Rails.logger.level = old_log_level
   end
 
   # Log lines need to be sorted into separate buffers by pid
   # because lines of log messages from different processes can intermix
-  class Demultiplexer
-    def initialize
-      @pid_map = {}
-      @write_buffer = WriteBuffer.new
-    end
-
-    def [](pid)
-      @pid_map[pid]
-    end
-
-    def new_entry(pid, attributes)
-      @write_buffer << @pid_map[pid] if @pid_map[pid].present?
-      @pid_map[pid] = LogEntry.new attributes.merge(pid: pid)
-    end
-
-    # Assigns named matches of MatchData to attributes of record
-    def merge_match(pid, match_data)
-      entry = @pid_map[pid]
-      return if entry.nil?
-
-      match_data.names.each do |match_name|
-        entry[match_name] = match_data[match_name]
-      end
-    end
-
-    def flush
-      @pid_map.values.each { |entry| @write_buffer << entry }
-      @write_buffer.flush
-    end
-  end
-
   def self.import_file(file_name)
-    # Turning off debug logging can shave off about 25% of import time
-    old_log_level = Rails.logger.level
-    Rails.logger.level = 1 if Rails.logger.level == 0
-
-    import_start = Time.now
-
-    buffer = WriteBuffer.new
-
     # TODO: Figure out a decent way to fit this into 80 char column width
     line_rx = /^(\w), \[(.+) #(\d+)\] .+ -- : (.*)$/
 
@@ -125,15 +77,18 @@ module LogParser
     end
 
     demux.flush
-
-    import_duration = sprintf('%.2f', Time.now - import_start)
-    Rails.logger.info "Imported file #{file_name} in #{import_duration} seconds"
-
-  ensure
-    Rails.logger.level = old_log_level
   end
 
   def self.import_files(pattern)
-    Dir[pattern].each { |fname| import_file(fname) }
+    without_logs do
+      Dir[pattern].each do |fname|
+        start = Time.now
+
+        import_file(fname)
+
+        duration = format('%.2f', Time.now - start)
+        Rails.logger.info "Imported file #{file_name} in #{duration} seconds"
+      end
+    end
   end
 end
